@@ -5,8 +5,10 @@ module Lib
     ( toField  -- FIXME: have to export to be able to test
     , GameState(..)  -- FIXME: have to export to be able to test
     , Direction(..)
-    , GameUI
+    , GameUI(..)
     , GameT(..)
+    , playGame
+    , evalGameT
     -- , move
     -- , isWin
     ) where
@@ -57,29 +59,36 @@ toField s = do
   where
     unchecked = sequence $ V.fromList $ (sequence . (toCell <$>) . V.init . V.fromList) <$> lines s
 
-data GameState = GameState { gsPos :: Position, gsField :: Field }
+data GameStatus = Win | InGame | Lose
+  deriving (Eq, Show)
+
+data GameState = GameState { gsPos :: Position, gsField :: Field, gsStatus :: GameStatus }
   deriving Show
 
 data Direction = North | South | West | East
   deriving Show
 
-newtype GameT ui a = GameT (StateT GameState (MaybeT ui) a)
+newtype GameT ui a = GameT (StateT GameState ui a)
   deriving (Functor, Applicative, Monad, MonadState GameState, Alternative)
 
+runGameT :: GameT ui a -> GameState -> ui (a, GameState)
+runGameT (GameT st) = runStateT st
+
+evalGameT :: GameUI ui => GameT ui a -> GameState -> ui a
+evalGameT game initial = fst <$> runGameT game initial
+
 instance MonadTrans GameT where
-  lift f = GameT (lift $ lift f)
+  lift f = GameT $ lift f
 
 class Monad ui => GameUI ui where
   nextEvent :: ui Direction
   movePlayer :: Position -> Position -> ui ()
-  finish :: ui ()
-  killPlayer :: ui ()
 
-instance GameUI ui => MonadPlus (GameT ui) where
-  mzero = do
-    lift killPlayer
-    GameT mzero
-  (GameT ma) `mplus` (GameT mb) = GameT $ ma `mplus` mb
+-- instance GameUI ui => MonadPlus (GameT ui) where
+--   mzero = do
+--     lift killCharacter
+--     GameT mzero
+--   (GameT ma) `mplus` (GameT mb) = GameT $ ma `mplus` mb
 
 makeStep :: GameUI ui => GameT ui ()
 makeStep = do
@@ -87,12 +96,14 @@ makeStep = do
     gs <- get
     let newPos@(x, y) = go (gsPos gs) dir
     let field = gsField gs
-    guard $ x >= 0 && y >= 0 && V.length field /= 0
+    if x >= 0 && y >= 0 && V.length field /= 0
       && x < V.length field && y < V.length (field ! x)
-    case field ! x ! y of
-      Exit -> lift finish
+    then case field ! x ! y of
+      Exit -> put $ gs { gsStatus = Win, gsPos = newPos }
       Free -> put $ gs { gsPos = newPos }
       Wall -> return ()
+    else
+      put $ gs { gsStatus = Win }
   where
     go (x, y) dir = case dir of
       South -> (x + 1, y)
@@ -100,6 +111,9 @@ makeStep = do
       West  -> (x, y - 1)
       East  -> (x, y + 1)
 
-
-playGame :: GameUI ui => GameT ui b
-playGame = forever makeStep
+playGame :: GameUI ui => GameT ui ()
+playGame = do
+  makeStep
+  status <- gets gsStatus
+  when (status == InGame)
+    playGame
