@@ -86,7 +86,7 @@ instance MonadTrans GameT where
 
 class Monad ui => GameUI ui where
   nextStep :: ui (Maybe Direction)
-  movePlayer :: Position -> Position -> ui ()
+  movePlayer :: Position -> ui ()
 
 -- instance GameUI ui => MonadPlus (GameT ui) where
 --   mzero = do
@@ -101,15 +101,14 @@ evalStep = do
     case mbDir of
       Nothing -> put $ gs { gsStatus = Stop }
       Just dir -> do
-        let oldPos = gsPos gs
-        let newPos@(x, y) = go oldPos dir
+        let newPos@(x, y) = go (gsPos gs) dir
         let field = gsField gs
         if x >= 0 && y >= 0 && V.length field /= 0
           && x < V.length field && y < V.length (field ! x)
         then do
           let cell = field ! x ! y
           when (cell /= Wall) $ do
-            lift $ movePlayer oldPos newPos
+            lift $ movePlayer newPos
             put $ gs { gsPos = newPos }
           when (cell == Exit) $
             put $ gs { gsStatus = Win }

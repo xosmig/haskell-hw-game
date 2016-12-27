@@ -27,7 +27,7 @@ instance GameUI FakeUI where
         return $ Just dir
       [] -> return Nothing
   -- movePlayer :: Position -> Position -> ui ()
-  movePlayer _ _ = return ()
+  movePlayer _ = return ()
 
 fieldExample =
   " #x     \n\
@@ -69,6 +69,7 @@ stateExample = fromJust $ gameState fieldExample (0, 0)
 testsPlay = [ gsStatus (run [North]) == Lose
             , gsStatus (run [West]) == Lose
             , gsStatus (run [South, East, East, North]) == Win
+            , gsStatus (run [South, South]) == Stop
             , gsPos (run [East]) == (0, 0)
             , gsPos (run [South, South]) == (2, 0)
             ]
