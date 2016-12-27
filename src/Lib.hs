@@ -7,8 +7,12 @@ module Lib
     , Direction(..)
     , GameUI(..)
     , GameT(..)
+    , GameStatus(..)
     , playGame
+    , runGameT
+    , execGameT
     , evalGameT
+    , gameState
     -- , move
     -- , isWin
     ) where
@@ -25,12 +29,6 @@ import qualified Data.Vector as V
 import Data.Vector((!))
 import Control.Applicative
 
-
-data NotImplemented = NotImplemented
-instance Show NotImplemented where
-  show NotImplemented = "Not Implemented"
-instance Exception NotImplemented where
-(??) = throw NotImplemented
 
 -- FIXME: ??? data Cell = Exit('x'), Wall('#'), Free(' ')
 data Cell = Exit | Wall | Free
@@ -59,20 +57,26 @@ toField s = do
   where
     unchecked = sequence $ V.fromList $ (sequence . (toCell <$>) . V.init . V.fromList) <$> lines s
 
-data GameStatus = Win | InGame | Lose
+data GameStatus = Win | InGame | Lose | Stop
   deriving (Eq, Show)
 
 data GameState = GameState { gsPos :: Position, gsField :: Field, gsStatus :: GameStatus }
   deriving Show
 
+gameState :: String -> Position -> Maybe GameState
+gameState fieldS pos = (\field -> GameState pos field InGame) <$> toField fieldS
+
 data Direction = North | South | West | East
-  deriving Show
+  deriving (Eq, Show)
 
 newtype GameT ui a = GameT (StateT GameState ui a)
   deriving (Functor, Applicative, Monad, MonadState GameState, Alternative)
 
 runGameT :: GameT ui a -> GameState -> ui (a, GameState)
 runGameT (GameT st) = runStateT st
+
+execGameT :: GameUI ui => GameT ui a -> GameState -> ui GameState
+execGameT game initial = snd <$> runGameT game initial
 
 evalGameT :: GameUI ui => GameT ui a -> GameState -> ui a
 evalGameT game initial = fst <$> runGameT game initial
@@ -81,7 +85,7 @@ instance MonadTrans GameT where
   lift f = GameT $ lift f
 
 class Monad ui => GameUI ui where
-  nextEvent :: ui Direction
+  nextStep :: ui (Maybe Direction)
   movePlayer :: Position -> Position -> ui ()
 
 -- instance GameUI ui => MonadPlus (GameT ui) where
@@ -90,20 +94,27 @@ class Monad ui => GameUI ui where
 --     GameT mzero
 --   (GameT ma) `mplus` (GameT mb) = GameT $ ma `mplus` mb
 
-makeStep :: GameUI ui => GameT ui ()
-makeStep = do
-    dir <- lift nextEvent
+evalStep :: GameUI ui => GameT ui ()
+evalStep = do
+    mbDir <- lift nextStep
     gs <- get
-    let newPos@(x, y) = go (gsPos gs) dir
-    let field = gsField gs
-    if x >= 0 && y >= 0 && V.length field /= 0
-      && x < V.length field && y < V.length (field ! x)
-    then case field ! x ! y of
-      Exit -> put $ gs { gsStatus = Win, gsPos = newPos }
-      Free -> put $ gs { gsPos = newPos }
-      Wall -> return ()
-    else
-      put $ gs { gsStatus = Win }
+    case mbDir of
+      Nothing -> put $ gs { gsStatus = Stop }
+      Just dir -> do
+        let oldPos = gsPos gs
+        let newPos@(x, y) = go oldPos dir
+        let field = gsField gs
+        if x >= 0 && y >= 0 && V.length field /= 0
+          && x < V.length field && y < V.length (field ! x)
+        then do
+          let cell = field ! x ! y
+          when (cell /= Wall) $ do
+            lift $ movePlayer oldPos newPos
+            put $ gs { gsPos = newPos }
+          when (cell == Exit) $
+            put $ gs { gsStatus = Win }
+        else
+          put $ gs { gsStatus = Lose }
   where
     go (x, y) dir = case dir of
       South -> (x + 1, y)
@@ -113,7 +124,7 @@ makeStep = do
 
 playGame :: GameUI ui => GameT ui ()
 playGame = do
-  makeStep
+  evalStep
   status <- gets gsStatus
   when (status == InGame)
     playGame
