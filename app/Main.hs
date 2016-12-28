@@ -25,6 +25,13 @@ drawHero w (x, y) = do
   moveCursorTo w pos
 
 instance GameUI ConsoleUI where
+  -- initialize :: ui ()
+  initialize = ConsoleUI $ do
+    w <- defaultWindow
+    drawField w field
+    drawHero w startPos
+    render
+
   -- nextStep :: ui Direction
   nextStep = do
     mbEvent <- ConsoleUI $ do
@@ -132,9 +139,6 @@ showMainMenu w title = fromJust $ showDialog w title [("Play", showGame w), ("Ex
 
 showGame :: Window -> Curses ()
 showGame w = do
-    drawField w field
-    drawHero w startPos
-    render
     state <- runConsoleUI $ execGame playGame field startPos
     showMainMenu w $ show $ gsStatus state
 

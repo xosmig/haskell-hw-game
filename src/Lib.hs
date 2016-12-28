@@ -6,6 +6,7 @@ module Lib
     , Field
     , GameState
     , gsStatus
+    , gsPos
     , Direction(..)
     , GameUI(..)
     , GameStatus(..)
@@ -18,7 +19,6 @@ module Lib
 
 
 import Control.Monad.Trans.Class
--- import Control.Monad.Trans.State
 import Control.Monad.Trans.Maybe
 import Control.Monad.State
 import Control.Monad.Reader
@@ -90,6 +90,7 @@ instance MonadTrans Game where
   lift f = Game $ lift $ lift f
 
 class Monad ui => GameUI ui where
+  initialize :: ui ()
   nextStep :: ui (Maybe Direction)
   movePlayer :: Position -> ui ()
 
@@ -128,7 +129,11 @@ evalStep = do
 
 playGame :: GameUI ui => Game ui ()
 playGame = do
-  evalStep
-  status <- gets gsStatus
-  when (status == InGame)
-    playGame
+    lift initialize
+    gameLoop
+  where
+    gameLoop = do
+      evalStep
+      status <- gets gsStatus
+      when (status == InGame)
+        gameLoop

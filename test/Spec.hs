@@ -17,6 +17,8 @@ evalFakeUI :: FakeUI a -> [Direction] -> a
 evalFakeUI (FakeUI st) = evalState st
 
 instance GameUI FakeUI where
+  -- initialize :: ui ()
+  initialize = return ()
   -- nextStep :: ui Direction
   nextStep = do
     ds <- get
