@@ -53,19 +53,23 @@ field = fromJust $ toField
   \  ###   \n\
   \        "
 
+drawField :: Window -> Field -> Curses ()
 drawField w field = unless (V.length field == 0) $ do
-    drawBorderLine (0, 0)
-    forM_ (enumerate field) $ \(i, row) -> do
-      moveCursorTo w (i + 1, 0)
+    moveCursorTo w (0, 0)
+    drawStringHere w borderLine
+    forM_ field $ \row -> do
       drawStringHere w "^"
       forM_ row $ \cell ->
         drawStringHere w [cellToChar cell]
-      drawStringHere w "^"
-    drawBorderLine (V.length field + 1, 0)
+      drawStringHere w "^\n"
+    drawStringHere w borderLine
+    drawStringHere w rules
   where
     width = V.length $ field ! 0
-    drawBorderLine pos = moveCursorTo w pos >> drawStringHere w (replicate (width + 2) '^')
+    borderLine = replicate (width + 2) '^' ++ "\n"
     enumerate v = zip [0..] (V.toList v)
+    rules = " q - exit\n\
+            \ arrows - move"
 
 startPos = (0, 0)
 

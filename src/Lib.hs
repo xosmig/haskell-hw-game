@@ -3,6 +3,7 @@
 
 module Lib
     ( toField  -- FIXME: have to export to be able to test
+    , Field
     , GameState(..)  -- FIXME: have to export to be able to test
     , Direction(..)
     , GameUI(..)
