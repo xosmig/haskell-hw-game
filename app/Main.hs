@@ -12,7 +12,8 @@ import qualified Data.Vector as V
 import Data.Vector((!))
 import Control.Monad.State
 
-newtype ConsoleUI a = ConsoleUI  { runConsoleUI :: Curses a }
+
+newtype CursesUI a = CursesUI  { runCursesUI :: Curses a }
   deriving (Functor, Applicative, Monad)
 
 moveCursorTo w (x, y) = updateWindow w (moveCursor (toInteger x) (toInteger y))
@@ -24,9 +25,9 @@ drawHero w (x, y) = do
   drawStringHere w "@"
   moveCursorTo w pos
 
-instance GameUI ConsoleUI where
+instance GameUI CursesUI where
   -- initialize :: ui ()
-  initialize = ConsoleUI $ do
+  initialize = CursesUI $ do
     w <- defaultWindow
     drawField w field
     drawHero w startPos
@@ -34,7 +35,7 @@ instance GameUI ConsoleUI where
 
   -- nextStep :: ui Direction
   nextStep = do
-    mbEvent <- ConsoleUI $ do
+    mbEvent <- CursesUI $ do
       w <- defaultWindow
       getEvent w Nothing
     case mbEvent of
@@ -48,7 +49,7 @@ instance GameUI ConsoleUI where
       Nothing -> nextStep
 
   -- movePlayer :: Position -> ui ()
-  movePlayer pos = ConsoleUI $ do
+  movePlayer pos = CursesUI $ do
     w <- defaultWindow
     drawStringHere w " "
     drawHero w pos
@@ -139,11 +140,11 @@ showMainMenu w title = fromJust $ showDialog w title [("Play", showGame w), ("Ex
 
 showGame :: Window -> Curses ()
 showGame w = do
-    state <- runConsoleUI $ execGame playGame field startPos
-    showMainMenu w $ show $ gsStatus state
+  state <- runCursesUI $ execGame playGame field startPos
+  showMainMenu w $ show $ gsStatus state
 
 main :: IO ()
 main = runCurses $ do
-    setEcho False
-    w <- defaultWindow
-    showMainMenu w "Hello"
+  setEcho False
+  w <- defaultWindow
+  showMainMenu w "Hello"

@@ -51,8 +51,6 @@ type Position = (Int, Int)
 type Vector2D a = V.Vector (V.Vector a)
 type Field = Vector2D Cell
 
--- Функция проверяет, что поле имеет прямоугольную форму,
--- состоит из понятных символов и на нём ровно одна цель.
 toField :: String -> Maybe Field
 toField s = do
     guard $ length (filter (== Just Exit) (toCell <$> s)) == 1
