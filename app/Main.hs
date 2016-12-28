@@ -11,6 +11,31 @@ import Control.Monad
 import qualified Data.Vector as V
 import Data.Vector((!))
 import Control.Monad.State
+import System.IO
+
+
+newtype TextUI a = TextUI { runTextUI :: IO a }
+  deriving (Functor, Applicative, Monad)
+
+instance GameUI TextUI where
+  -- initialize :: ui ()
+  initialize = TextUI $ do
+    putStrLn $ " You are at the position " ++ show startPos
+    putStrLn " use wasd to move, q to exit"
+
+  -- nextStep :: ui Direction
+  nextStep = do
+    ch <- TextUI getChar
+    case ch of
+      'w' -> return $ Just North
+      'a' -> return $ Just West
+      's' -> return $ Just South
+      'd' -> return $ Just East
+      'q' -> return Nothing
+      _ -> nextStep
+
+  -- movePlayer :: Position -> ui ()
+  movePlayer pos = TextUI $ putStrLn $ " You are at the position " ++ show pos
 
 
 newtype CursesUI a = CursesUI  { runCursesUI :: Curses a }
@@ -143,8 +168,25 @@ showGame w = do
   state <- runCursesUI $ execGame playGame field startPos
   showMainMenu w $ show $ gsStatus state
 
-main :: IO ()
-main = runCurses $ do
+playWithGraphics :: IO ()
+playWithGraphics = runCurses $ do
   setEcho False
   w <- defaultWindow
   showMainMenu w "Hello"
+
+playWithText :: IO ()
+playWithText = do
+  state <- runTextUI $ execGame playGame field startPos
+  print $ gsStatus state
+
+main :: IO ()
+main = do
+  putStr "Do you want to enter graphics mode? (y / n) : "
+  hFlush stdout
+  ch <- getChar
+  getChar
+  case ch of
+    'y' -> playWithGraphics
+    'n' -> playWithText
+    'q' -> return ()
+    _ -> main

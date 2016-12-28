@@ -92,12 +92,6 @@ class Monad ui => GameUI ui where
   nextStep :: ui (Maybe Direction)
   movePlayer :: Position -> ui ()
 
--- instance GameUI ui => MonadPlus (Game ui) where
---   mzero = do
---     lift killCharacter
---     Game mzero
---   (Game ma) `mplus` (Game mb) = Game $ ma `mplus` mb
-
 evalStep :: GameUI ui => Game ui ()
 evalStep = do
     mbDir <- lift nextStep
