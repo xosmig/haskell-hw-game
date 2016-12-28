@@ -30,6 +30,7 @@ executable sandbox-exe
                      , sandbox
                      , ncurses
                      , vector
+                     , mtl
   default-language:    Haskell2010
 
 test-suite sandbox-test
