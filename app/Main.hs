@@ -181,7 +181,7 @@ playWithText = do
 
 main :: IO ()
 main = do
-  putStr "Do you want to enter graphics mode? (y / n) : "
+  putStr "Do you want to enter graphic mode? (y / n) : "
   hFlush stdout
   ch <- getChar
   getChar
