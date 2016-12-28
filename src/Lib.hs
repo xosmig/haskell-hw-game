@@ -2,20 +2,18 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Lib
-    ( toField  -- FIXME: have to export to be able to test
+    ( toField
     , Field
-    , GameState(..)  -- FIXME: have to export to be able to test
+    , GameState
+    , gsStatus
     , Direction(..)
     , GameUI(..)
-    , GameT(..)
     , GameStatus(..)
     , playGame
-    , runGameT
-    , execGameT
-    , evalGameT
+    , runGame
+    , execGame
+    , evalGame
     , cellToChar
-    -- , move
-    -- , isWin
     ) where
 
 
@@ -74,34 +72,34 @@ data GameState = GameState { gsPos :: Position, gsStatus :: GameStatus }
 data Direction = North | South | West | East
   deriving (Eq, Show)
 
-newtype GameT ui a = GameT (ReaderT Field (StateT GameState ui) a)
+newtype Game ui a = Game (ReaderT Field (StateT GameState ui) a)
   deriving (Functor, Applicative, Monad, MonadState GameState, MonadReader Field)
 
-runGameT :: GameT ui a -> Field -> Position -> ui (a, GameState)
-runGameT (GameT game) field pos = runStateT (runReaderT game field) initState
+runGame :: Game ui a -> Field -> Position -> ui (a, GameState)
+runGame (Game game) field pos = runStateT (runReaderT game field) initState
   where
     initState = GameState { gsPos = pos, gsStatus = InGame }
 
-execGameT :: GameUI ui => GameT ui a -> Field -> Position -> ui GameState
-execGameT game field pos = snd <$> runGameT game field pos
+execGame :: GameUI ui => Game ui a -> Field -> Position -> ui GameState
+execGame game field pos = snd <$> runGame game field pos
 
-evalGameT :: GameUI ui => GameT ui a -> Field -> Position -> ui a
-evalGameT game field pos = fst <$> runGameT game field pos
+evalGame :: GameUI ui => Game ui a -> Field -> Position -> ui a
+evalGame game field pos = fst <$> runGame game field pos
 
-instance MonadTrans GameT where
-  lift f = GameT $ lift $ lift f
+instance MonadTrans Game where
+  lift f = Game $ lift $ lift f
 
 class Monad ui => GameUI ui where
   nextStep :: ui (Maybe Direction)
   movePlayer :: Position -> ui ()
 
--- instance GameUI ui => MonadPlus (GameT ui) where
+-- instance GameUI ui => MonadPlus (Game ui) where
 --   mzero = do
 --     lift killCharacter
---     GameT mzero
---   (GameT ma) `mplus` (GameT mb) = GameT $ ma `mplus` mb
+--     Game mzero
+--   (Game ma) `mplus` (Game mb) = Game $ ma `mplus` mb
 
-evalStep :: GameUI ui => GameT ui ()
+evalStep :: GameUI ui => Game ui ()
 evalStep = do
     mbDir <- lift nextStep
     gs <- get
@@ -128,7 +126,7 @@ evalStep = do
       West  -> (x, y - 1)
       East  -> (x, y + 1)
 
-playGame :: GameUI ui => GameT ui ()
+playGame :: GameUI ui => Game ui ()
 playGame = do
   evalStep
   status <- gets gsStatus

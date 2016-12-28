@@ -71,7 +71,7 @@ testsPlay = [ gsStatus (run [North]) == Lose
             ]
   where
     field = fromJust $ toField fieldExample
-    run = evalFakeUI (execGameT playGame field (0, 0))
+    run = evalFakeUI (execGame playGame field (0, 0))
 
 
 -- =================================================================

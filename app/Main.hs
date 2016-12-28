@@ -135,7 +135,7 @@ showGame w = do
     drawField w field
     drawHero w startPos
     render
-    state <- runConsoleUI $ execGameT playGame field startPos
+    state <- runConsoleUI $ execGame playGame field startPos
     showMainMenu w $ show $ gsStatus state
 
 main :: IO ()
