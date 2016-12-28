@@ -12,7 +12,7 @@ module Lib
     , runGameT
     , execGameT
     , evalGameT
-    , gameState
+    , cellToChar
     -- , move
     -- , isWin
     ) where
@@ -22,6 +22,7 @@ import Control.Monad.Trans.Class
 -- import Control.Monad.Trans.State
 import Control.Monad.Trans.Maybe
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Monad
 import Control.Exception
@@ -40,6 +41,12 @@ toCell c = case c of
   '#' -> pure Wall
   ' ' -> pure Free
   _   -> mzero
+
+cellToChar :: Cell -> Char
+cellToChar cell = case cell of
+  Exit -> 'x'
+  Wall -> '#'
+  Free -> ' '
 
 type Position = (Int, Int)
 type Vector2D a = V.Vector (V.Vector a)
@@ -60,29 +67,28 @@ toField s = do
 data GameStatus = Win | InGame | Lose | Stop
   deriving (Eq, Show)
 
-data GameState = GameState { gsPos :: Position, gsField :: Field, gsStatus :: GameStatus }
+data GameState = GameState { gsPos :: Position, gsStatus :: GameStatus }
   deriving Show
-
-gameState :: String -> Position -> Maybe GameState
-gameState fieldS pos = (\field -> GameState pos field InGame) <$> toField fieldS
 
 data Direction = North | South | West | East
   deriving (Eq, Show)
 
-newtype GameT ui a = GameT (StateT GameState ui a)
-  deriving (Functor, Applicative, Monad, MonadState GameState, Alternative)
+newtype GameT ui a = GameT (ReaderT Field (StateT GameState ui) a)
+  deriving (Functor, Applicative, Monad, MonadState GameState, MonadReader Field)
 
-runGameT :: GameT ui a -> GameState -> ui (a, GameState)
-runGameT (GameT st) = runStateT st
+runGameT :: GameT ui a -> Field -> Position -> ui (a, GameState)
+runGameT (GameT game) field pos = runStateT (runReaderT game field) initState
+  where
+    initState = GameState { gsPos = pos, gsStatus = InGame }
 
-execGameT :: GameUI ui => GameT ui a -> GameState -> ui GameState
-execGameT game initial = snd <$> runGameT game initial
+execGameT :: GameUI ui => GameT ui a -> Field -> Position -> ui GameState
+execGameT game field pos = snd <$> runGameT game field pos
 
-evalGameT :: GameUI ui => GameT ui a -> GameState -> ui a
-evalGameT game initial = fst <$> runGameT game initial
+evalGameT :: GameUI ui => GameT ui a -> Field -> Position -> ui a
+evalGameT game field pos = fst <$> runGameT game field pos
 
 instance MonadTrans GameT where
-  lift f = GameT $ lift f
+  lift f = GameT $ lift $ lift f
 
 class Monad ui => GameUI ui where
   nextStep :: ui (Maybe Direction)
@@ -102,7 +108,7 @@ evalStep = do
       Nothing -> put $ gs { gsStatus = Stop }
       Just dir -> do
         let newPos@(x, y) = go (gsPos gs) dir
-        let field = gsField gs
+        field <- ask
         if x >= 0 && y >= 0 && V.length field /= 0
           && x < V.length field && y < V.length (field ! x)
         then do

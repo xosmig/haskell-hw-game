@@ -6,7 +6,6 @@ import Control.Monad.Trans.Maybe
 import Data.Maybe
 import Lib
 import System.Console.ANSI
--- import Control.Monad.Trans.State
 import Control.Monad.Identity
 import Control.Monad.State
 
@@ -26,7 +25,7 @@ instance GameUI FakeUI where
         put rest
         return $ Just dir
       [] -> return Nothing
-  -- movePlayer :: Position -> Position -> ui ()
+  -- movePlayer :: Position -> ui ()
   movePlayer _ = return ()
 
 fieldExample =
@@ -63,9 +62,6 @@ testsField =  [ isJust    (toField fieldExample)
               , isNothing (toField fieldTwoExits)
               ]
 
-stateExample :: GameState
-stateExample = fromJust $ gameState fieldExample (0, 0)
-
 testsPlay = [ gsStatus (run [North]) == Lose
             , gsStatus (run [West]) == Lose
             , gsStatus (run [South, East, East, North]) == Win
@@ -74,7 +70,8 @@ testsPlay = [ gsStatus (run [North]) == Lose
             , gsPos (run [South, South]) == (2, 0)
             ]
   where
-    run ds = evalFakeUI (execGameT playGame stateExample) ds
+    field = fromJust $ toField fieldExample
+    run = evalFakeUI (execGameT playGame field (0, 0))
 
 
 -- =================================================================
@@ -113,3 +110,4 @@ testAll = do
 
 main :: IO ()
 main = testAll
+

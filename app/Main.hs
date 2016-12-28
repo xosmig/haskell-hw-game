@@ -8,15 +8,19 @@ import Lib
 import UI.NCurses
 import Data.Maybe
 import Control.Monad
+import qualified Data.Vector as V
+import Data.Vector((!))
 
 newtype ConsoleUI a = ConsoleUI  { runConsoleUI :: Curses a }
   deriving (Functor, Applicative, Monad)
 
 moveCursorTo w (x, y) = updateWindow w (moveCursor (toInteger x) (toInteger y))
+drawStringHere w s = updateWindow w (drawString s)
 
-drawHero w pos = do
+drawHero w (x, y) = do
+  let pos = (x + 1, y + 1)
   moveCursorTo w pos
-  updateWindow w (drawString "@")
+  drawStringHere w "@"
   moveCursorTo w pos
 
 instance GameUI ConsoleUI where
@@ -38,21 +42,32 @@ instance GameUI ConsoleUI where
   -- movePlayer :: Position -> ui ()
   movePlayer pos = ConsoleUI $ do
     w <- defaultWindow
-    updateWindow w (drawString " ")
+    drawStringHere w " "
     drawHero w pos
     render
 
-field =
+field = fromJust $ toField
   " #x     \n\
   \   ###  \n\
   \   #    \n\
   \  ###   \n\
   \        "
 
-startPos = (0, 0)
+drawField w field = unless (V.length field == 0) $ do
+    drawBorderLine (0, 0)
+    forM_ (enumerate field) $ \(i, row) -> do
+      moveCursorTo w (i + 1, 0)
+      drawStringHere w "^"
+      forM_ row $ \cell ->
+        drawStringHere w [cellToChar cell]
+      drawStringHere w "^"
+    drawBorderLine (V.length field + 1, 0)
+  where
+    width = V.length $ field ! 0
+    drawBorderLine pos = moveCursorTo w pos >> drawStringHere w (replicate (width + 2) '^')
+    enumerate v = zip [0..] (V.toList v)
 
-stateExample :: GameState
-stateExample = fromJust $ gameState field startPos
+startPos = (0, 0)
 
 showMessage w message = do
   updateWindow w clear
@@ -63,10 +78,10 @@ main :: IO ()
 main = runCurses $ do
     setEcho False
     w <- defaultWindow
-    updateWindow w (drawString field)
+    drawField w field
     drawHero w startPos
     render
-    state <- runConsoleUI $ execGameT playGame stateExample
+    state <- runConsoleUI $ execGameT playGame field startPos
     showMessage w $ show $ gsStatus state
     render
     wait

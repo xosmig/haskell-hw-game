@@ -29,6 +29,7 @@ executable sandbox-exe
   build-depends:       base
                      , sandbox
                      , ncurses
+                     , vector
   default-language:    Haskell2010
 
 test-suite sandbox-test
