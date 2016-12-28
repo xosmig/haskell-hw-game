@@ -20,8 +20,10 @@ newtype TextUI a = TextUI { runTextUI :: IO a }
 instance GameUI TextUI where
   -- initialize :: ui ()
   initialize = TextUI $ do
-    putStrLn $ " You are at the position " ++ show startPos
     putStrLn " use wasd to move, q to exit"
+    putStrLn "field : "
+    putStrLn fieldString
+    putStrLn $ "You are at the position " ++ show startPos
 
   -- nextStep :: ui Direction
   nextStep = do
@@ -35,7 +37,7 @@ instance GameUI TextUI where
       _ -> nextStep
 
   -- movePlayer :: Position -> ui ()
-  movePlayer pos = TextUI $ putStrLn $ " You are at the position " ++ show pos
+  movePlayer pos = TextUI $ putStrLn $ "You are at the position " ++ show pos
 
 
 newtype CursesUI a = CursesUI  { runCursesUI :: Curses a }
@@ -80,12 +82,14 @@ instance GameUI CursesUI where
     drawHero w pos
     render
 
-field = fromJust $ toField
+fieldString =
   " #x     \n\
   \   ###  \n\
   \   #    \n\
   \  ###   \n\
   \        "
+
+field = fromJust $ toField fieldString
 
 drawField :: Window -> Field -> Curses ()
 drawField w field = unless (V.length field == 0) $ do
